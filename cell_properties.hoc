@@ -1,0 +1,72 @@
+/*
+* Dendritic action potentials shape the computational 
+* 	properties of human layer 2/3 cortical neurons( Gidon et al., 2019)
+* 
+* written by 
+* Athanasia Papoutsi and Albert Gidon
+*
+*/
+nrn_load_dll("mod/nrnmech.dll")
+load_file("nrngui.hoc")
+xopen("Purkinje19b972-1.nrn")
+load_file("biophys.hoc")
+
+
+objref ic,vv, imp
+proc _init_(){
+	tstop = 1500
+	v_init=-74
+	del=300
+	biophys(is_active = 1)
+	finitialize()
+	fcurrent()
+	newPlotV()
+}
+
+proc set_iclamp(){local del
+	del = $1
+	ic = new IClamp(0.5)
+	ic.del = del
+	ic.dur = 1000
+	ic.amp = 0.4
+	
+}
+
+proc cell_properties() {
+	cvode.active(1)
+	using_cvode_ = 1
+	_init_()
+	vv = new Vector()
+	soma set_iclamp(del)
+	vv.record(&soma.v(.5))
+	run()
+	tau = (Rm = 1/apic[0].g_pas) * cm
+	soma Rin = get_Rin(0.5)
+
+
+	print "Origin cell"
+	print "------------"
+	print "Rin (MOhm) = 41 "
+	print "Tau_m (ms) = 14.1 "
+	print "somaAtic resting potential is around -75 mV"
+	print "somaAtic rehobase for spike = 0.4 nA"
+
+	soma set_iclamp(del)
+	cvode.active(1)
+	using_cvode_ = 1	
+	for i=0,10{
+		print ic.amp = 0.4 + i*0.05
+		run()
+		if(vv.max > 0 ) break
+	}
+	
+	print ""
+	print "Model cell"
+	print "------------" 
+	print "Rin (MOhm) = ", Rin
+	print "Tau_m (ms):",tau/1000
+	print "somaAtic resting potential is around", vv.x[(del-1)/0.1] ," mV"
+	print "somaAtic rehobase for spike = ", ic.amp , " nA"
+}
+cell_properties()
+access soma 

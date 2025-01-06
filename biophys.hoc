@@ -1,0 +1,200 @@
+/*
+* Dendritic action potentials shape the computational 
+* 	properties of human layer 2/3 cortical neurons( Gidon et al., 2019)
+* 
+* written by 
+* Athanasia Papoutsi and Albert Gidon
+*/
+load_file("classlib/TString.hoc")
+load_file("classlib/TPointList.hoc")
+objref imp
+objref iondenstity
+objref ConIh,ConIh1,dis,dis1
+//objref ConIh,ConIh1,dis,dis1
+// ConIh=new File()
+// dis=new File()
+// Ih.wopen("OUTPUT/Conih.dat")	
+// dis.wopen("OUTPUT/distanceIh.dat")	
+// ConIh1=new Vector()
+// dis1=new Vector()
+Default_Eleak = -65
+membranecap = 0.64      	/* specific membrane capacitance in uF cm^-2 */
+membraneresist = 120236 	/* specific membrane resistance in ohm cm^2 */
+axialresist = 120
+
+cai0 = 4e-5 
+cao0 = 2.4 
+cainf_cad0 = 4e-5
+kt_cad0 = 4e-5
+kd_cad0 = 4e-5
+taur_cad0 = 2
+
+gnabar_NaFSoma0 = 10
+gcabar_CaP2Soma0 = 0.0005
+gkbar_KhSoma0 = 0.0005
+
+gcabar_CaP20 = 0.004
+gcabar_CaT0 = 0.0015
+gcabar_CaE0 = 0.008
+gkbar_Khh0 = 0.0006
+gkbar_KM0  = 0.00001
+gkbar_KA0  = 0.08
+gkbar_KD0  = 0.09
+gkbar_KC30  = 0.06
+zero0 = 0
+
+Ra0 = 250  
+Rm=5000                     //Ohm*cm
+cmSoma = 0.8
+cmSmoothSec = 0.8
+cmSpinySect = 1.5
+gl_LeakSoma = 0.00006
+gl_LeakSmoothSec = 0.00021
+gl_LeakSpinySect = 0.00021
+el_Leak0 = -80
+
+func get_Rin(){local x
+	x = $1
+	imp = new Impedance(x)
+	imp.loc(x)
+	imp.compute(0)
+	return imp.input(x)
+}
+
+proc biophys(){
+	celsius = 35
+	forall {		/* Insert Leak everywhere */
+	    //insert hpkj	// Ih inserted everywhere
+		insert ds
+		insert pk
+	}
+	 
+	 	 
+	forsec spinydend {
+		cm = cmSpinySect  
+           Ra = Ra0 
+           insert Leak gl_Leak = gl_LeakSpinySect el_Leak = el_Leak0
+		   insert pas	g_pas=1/Rm}
+    forsec maindend {cm= cmSmoothSec  
+           Ra = Ra0 
+           insert Leak gl_Leak = gl_LeakSmoothSec el_Leak = el_Leak0
+		   insert pas	g_pas=1/Rm
+		   }
+	forsec "soma" { 
+	    cm = cmSoma  
+        Ra = Ra0 
+        insert Leak gl_Leak = gl_LeakSoma el_Leak = el_Leak0  
+		insert pas	g_pas=1/Rm
+	    }
+	//segment at least every 30 μm	
+	//forsec spinydend nseg = 1 + 2*int(L/30) 
+	//active_properties()
+	dend[440] nseg =20
+	
+}
+
+proc active_properties() {
+	iondenstity=new TPointList()
+	ConIh1=new Vector()
+	dis1=new Vector()
+	ConIh=new File()
+	dis=new File()
+	ConIh.wopen("Conih.dat")	
+	dis.wopen("distanceIh.dat")	
+
+	
+    forsec maindend {
+		//insert cdp4N
+		
+		insert CaP2 cai = cai0 cao = cao0 gcabar_CaP2 = gcabar_CaP20
+         insert CaT cai = cai0 cao = cao0  gcabar_CaT = gcabar_CaT0
+         insert CaE cai = cai0 cao = cao0  gcabar_CaE = gcabar_CaE0
+         insert Khh gkbar_Khh = gkbar_Khh0
+         insert KM  gkbar_KM  = gkbar_KM0
+         insert KA  gkbar_KA  = gkbar_KA0
+         insert KD  gkbar_KD  = gkbar_KD0
+         insert KC3 gkbar_KC3  = gkbar_KC30
+         insert K23 gkbar_K23 = gkbar_K23
+         insert cad taur_cad = taur_cad0 cainf_cad = cainf_cad0 kt_cad = kt_cad0 kd_cad = kd_cad0  
+		insert Kv4
+		gbar_Kv4 = 0.0252 
+		insert Kv4s
+		gbar_Kv4s = 0.015
+		 
+		
+   }
+		
+		
+
+
+forsec spinydend {
+		//insert cdp4Nsp
+		
+		// insert CaP2 cai = cai0 cao = cao0 gcabar_CaP2 = gcabar_CaP20
+         // insert CaT cai = cai0 cao = cao0  gcabar_CaT = gcabar_CaT0
+         // insert CaE cai = cai0 cao = cao0  gcabar_CaE = gcabar_CaE0
+         // insert Khh gkbar_Khh = gkbar_Khh0
+         // insert KM  gkbar_KM  = gkbar_KM0
+         insert KA  gkbar_KA  = gkbar_KA0
+         // insert KD  gkbar_KD  = gkbar_KD0
+         // insert KC3 gkbar_KC3  = gkbar_KC30
+         // insert K23 gkbar_K23 = gkbar_K23
+         // insert cad taur_cad = taur_cad0 cainf_cad = cainf_cad0 kt_cad = kt_cad0 kd_cad = kd_cad0  
+		// insert Kv4
+		// gbar_Kv4 = 0.0264
+		// insert Kv4s
+		// gbar_Kv4s = 0.015		 
+}
+
+access soma
+soma distance(0,0.5)
+
+forsec "soma" {	
+		//insert cdp20N_FD2
+		// insert NaF  gnabar_NaF = gnabar_NaFSoma0
+        // insert NaP  gnabar_NaP = gnabar_NaP
+        // insert CaP2 cai = cai0 cao = cao0 gcabar_CaP2 = gcabar_CaP2Soma0
+        // insert CaT cai = cai0 cao = cao0  gcabar_CaT = zero0
+        // insert CaE cai = cai0 cao = cao0  gcabar_CaE = zero0
+        // insert Khh gkbar_Khh = gkbar_Khh
+        // insert KM gkbar_KM = gkbar_KM
+        insert KA gkbar_KA = gkbar_KA
+        // insert KD  gkbar_KD  = zero0
+        // insert Kh   gkbar_Kh = gkbar_KhSoma0
+        // insert cad taur_cad = taur_cad0 cainf_cad =cainf_cad0  kt_cad = kt_cad0 kd_cad = kd_cad0
+		
+}
+
+	
+	//h_density()
+}
+
+proc h_density() {
+	soma distance()
+	forall {
+		//dis1.append(distance(0.5))
+		if(ismembrane("hd")) {			
+			for (x) if (x>0 && x<1) {
+				xdist1 = distance(x)
+				xdist=xdist1
+				if (xdist>500) {xdist=500}
+				ifsec maindend xdist = 0
+				con=ihmax*(1+1.7*xdist/100)
+				//ghdbar_hd(x) =con
+				iondenstity.append(x)
+				//sprint("OUTPUT/Conih.dat",%f,xdist)
+				//ifsec as {xdist1 = 500 con=1.2e-5*(1+1.2*xdist1/100)}
+				if (xdist<1e5){
+					ConIh1.append(con)
+					dis1.append(xdist1)
+				} 
+				//print "ghdbar_hd(x)= ",secname(),x,ghdbar_hd(x)
+			}
+		}
+	}
+	ConIh1.printf(ConIh)
+	dis1.printf(dis)
+	ConIh.close()
+	dis.close()
+}
+

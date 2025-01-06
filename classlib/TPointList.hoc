@@ -1,0 +1,312 @@
+D__TPOINTLISTTHOC = 1
+//see help file in neuron extention help pages (wiki)
+// https://bbpteam.epfl.ch/wiki/index.php/NE:TPointList
+
+begintemplate TPointList
+	public append,each_point,count,sclst,point,points,access_,mark,each_point_var
+	public setrand_distance
+	objref sclst,x,null,this,rnd,marklist,sl,NULL,sec_list,w
+	strdef classname,tmp,style
+	public classname,loc,setrand,relocate,printf,total_l,x,mark1,filter_by_distance
+	public setrand_descrete, relocate_descrete,get_random_point,point,secname_,sec_list
+	
+	proc init(){
+		classname="TPointList"
+		sclst = new List()
+		sec_list = new SectionList()
+		x = new Vector()
+		SPLIT = 0 //by default it will be only the local list
+		gid = -1 //by default points do not have to belong to the same cell.
+		if(numarg()>0) gid = $1
+		if(numarg()>1) SPLIT = $2 //you will be able to set it to complete by the Manager objects
+        
+	}
+
+	obfunc append(){local j localobj pl,sl
+		//need to push the currect sect, hopefully you are not one of them.ion into the section stack
+		if(numarg()==1){
+			if(argtype(1)==0){
+				x.append($1)
+				sclst.append(new SectionRef())
+				//print "x.append($2):"
+			}else{
+				sl = $o1.sclst
+				print "x.append($2):",sl
+				//this assumes that all sections exists
+				for j=0, sl.count - 1 {
+					sclst.append(sl.o(j))//we do not mind to reference the existing object
+					x.append($o1.x.x[j])
+				}
+			}
+			sec_list.append()
+		//python style address. 	
+		}else{
+			sprint(tmp,"%s {%s.append(%g) \n %s.sec_list.append()}",$s1,this,$2,this)
+			execute(tmp)
+			x.append($2)
+			print "x.append($2):"
+		}
+		return this //for chaning 
+	}
+		
+	iterator each_point(){local i
+		for i=0, sclst.count-1{
+			if(sclst.o(i).exists) {
+				sclst.o(i).sec{
+					$&1 = x.x[i]
+					iterator_statement
+				}
+			}else{
+				if(SPLIT){
+					$&1 = -1 //Prevent using this number as a section loc(x)
+					iterator_statement
+				}
+			}
+		}
+	}
+	
+	
+	
+	//from here on some utility functions which make the use of this class more convinient
+	iterator point(){
+		sclst.o($1).sec{
+			$&2 = x.x[$1]
+			iterator_statement
+		}
+	}
+	
+	//use points, it make more sense to use it this way.s
+	iterator points(){local i
+		for i=2, numarg() sclst.o($i).sec{
+			$&1 = x.x[$i]
+			iterator_statement
+		}
+	}
+	
+	
+	proc loc(){
+		sclst.o($2).sec $o1.loc(x.x[$2])
+	}
+	
+	
+	func count(){ 
+		return sclst.count 
+	}
+	
+	
+	func access_(){
+		sclst.o($1).sec sprint(tmp,"access %s",secname())
+		execute(tmp)
+		return x.x[$1]
+	}
+
+	proc mark(){local x,color,size localobj m
+		{color = 1 style = "O" size = 6}
+		if(numarg()>1) color = $2
+		if(numarg()>2) style = $s3	
+		if(numarg()>3) size = $4
+		if(marklist != NULL) for x=0,marklist.count - 1  $o1.point_mark_remove(marklist.o(x))
+		marklist = new List() //kill the old lists
+		
+		for each_point(&x) {
+			m = new PointProcessMark(x)
+			marklist.append(m)//so they will not disappear with refresh
+			$o1.point_mark(m,color,style,size)
+		}
+	}
+	proc mark1(){local x,color,size localobj m
+		{color = 1 style = "O" size = 6}
+		if(numarg()>2) color = $3
+		if(numarg()>3) style = $s4	
+		if(numarg()>4) size = $5
+		marklist = new List() //kill the old lists
+		
+		for point($2,&x) {
+			m = new PointProcessMark(x)
+			marklist.append(m)//so they will not disappear with refresh
+			$o1.point_mark(m,color,style,size)
+		}
+	}
+	
+	proc setrand(/*SectionList,point_count[,randobj]*/){local tl,l,i,k,poistep,poi localobj vx
+	//same seed every time - very important!!!! unless you use a stream
+		rnd = new Random(123) 
+		sl = $o1  //set the class level object
+		i = 1 
+		l = k = tl = 0	
+       // print "SETRAND"		
+		if(numarg()>1) i = $2
+		if(numarg()>2)rnd = $o3
+		vx = new Vector(i)
+		forsec sl tl+=L //get the total length of the section list
+		total_l = tl
+		rnd.uniform(0,tl)
+		vx.setrand(rnd).sort()
+		vx.append(1e80)//l will never be bigger than this value
+		//note that no matter how many points there are, I am iterating only
+		// once over section list!
+		poistep=1/i
+		forsec sl {
+			l+=L
+			poi=$4
+			while(l>=vx.x[k]) {//go over all the possible in this section
+				//append(1 - (l-vx.x[k])/L)
+				append(poi)
+				//print "Poi=",poi
+				//append(poi)
+				//append($4)
+				k+=1
+				poi=poi+0.2
+				//print "append"	
+			}
+			if(k==i) break
+		}
+	}
+
+	
+	
+	proc setrand_distance(/*SectionList,distance,points_count,[,randobj]*/){local l,k,x,min_dist,points_countpoints_count
+	//same seed every time - very important!!!! unless you use a stream
+	// slow, but get you all the synapses above some distance from 
+	// the last activation of distance(0) function
+		distance()
+		rnd = new Random(123) 
+		sl = $o1  //set the class level object
+		min_dist = $2
+		points_count = 1 
+		l = k = total_l = 0		
+		if(numarg()>2) points_count = $3
+		if(numarg()>3)rnd = $o4
+		forsec sl total_l+=L //get the total length of the section list
+		total_l = total_l
+		rnd.uniform(0,total_l) //select a random point
+		while(k<points_count){
+			d = rnd.repick()
+			l = 0
+			//fprint ("\r%d synapses" , k)
+			// print "555"
+			forsec sl {
+				if(d > l && d < l + L){ //point is in this section
+					x = (d - l) / L // x posibion on the section 
+					dist = distance(x)
+					if(dist > min_dist){//discard every point below dist_min.
+						append(x)
+						k+=1
+					}
+					 //print "666"
+					break
+				}
+				l = l + L
+			}
+		}
+	}
+	func get_random_point(/*[randobj]*/){local tl,l,i,k,x localobj vx
+	//same seed every time - very important!!!! unless you use a stream
+		l = k = tl = 0		
+		rnd = $o1
+		for each_point(&x) tl += L/nseg
+		rnd.uniform(0,tl)
+		k = rnd.repick()
+		tl = i = 0
+		for each_point(&x) {
+			tl += L/nseg
+			if(tl <= k) i+=1
+		}
+		return i
+		
+	}
+	proc setrand_descrete(/*SectionList,point_count[,randobj]*/){local i,k,point_count,x,nnseg localobj vx
+	//same seed every time - very important!!!! unless you use a stream
+		rnd = new Random(123) 
+		sl = $o1 //set the class level object
+		k = i = 0		
+		point_count = $2 
+		if(numarg()>2)rnd = $o3
+		nnseg = 0
+		forsec sl nnseg+=nseg //get the total number of segments
+		vx = new Vector(nnseg)
+		rnd.uniform(0,1)
+		vx = vx.setrand(rnd).apply("int").sortindex() //uniqe synapses location
+		forsec sl {
+			for(x,0){
+				if(vx.x[k] == i) {
+					append(x)
+					k+=1
+					print "i=",i
+				}
+				i+=1 //for the none-unique position case
+				if(k>=point_count) break
+			}
+			if(k>=point_count) break
+		}
+	}
+	
+	
+	proc relocate_descrete(){local i,point,x1
+		i = 0
+		point = $1
+		k = $2
+		forsec sl {
+			for(x1,0){
+				if(k==i){
+					x.x[point] = x1
+					sclst.remove(point) 
+					sclst.insrt(point,new SectionRef())
+				}
+				i+=1
+			}
+			if(k<i) break
+		}
+		
+	}
+	
+	proc relocate(){local l,li
+		l = 0
+		li = $2
+		k = $1
+		forsec sl {
+			l+=L
+			if(l>=li) {
+				x.x[k] = 1 - (l-li)/L
+				sclst.remove(k) 
+				sclst.insrt(k,new SectionRef())
+				break
+			}
+		}
+		
+	}
+	
+	//just make it simple when it is on the same section
+	/*proc relocate(){
+		x.x[$1] = $2
+	}*/
+	
+
+	
+	iterator each_point_var(){local i
+		for i=0, sclst.count-1{
+			if(sclst.o(i).exists) {
+				sclst.o(i).sec{
+					sprint($s2,"%s.%s(%g)",secname(),$s1,x.x[i])
+					iterator_statement
+				}
+			}else{
+				if(SPLIT){
+					sprint($s2,"%s.%s(%g)",secname(),$s1,x.x[i])
+					iterator_statement
+				}
+			}
+		}
+	}
+	
+	proc printf(){local x,w
+		for each_point(&w) print secname(),"(",w,")"
+	}
+	
+	obfunc secname_(){local x localobj s
+		s = new TString()
+		sclst.o($1).sec {s.append(secname())}
+		return s
+	}
+endtemplate TPointList
+

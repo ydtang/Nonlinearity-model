@@ -1,0 +1,1 @@
+MODOBJFILES= CaE.o CaP2.o CaT.o CalciumP.o K23.o KA.o KC3.o KD.o KM.o Kh.o Khh.o Leak.o NaF.o NaP.o PCNMDA.o PfAMPA.o RegulationStim.o TimerescaleStim.o burst.o camax.o cdp_AIS.o cdp_smooth.o cdp_soma.o cdp_spiny.o cfAMPA.o distr.o kv4f.o kv4s.o linear.o myAMPA.o myAMPA1.o myGABA.o myNMDA.o mySyn.o netstim.o netstim1.o peak.o syn2.o

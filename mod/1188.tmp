@@ -1,0 +1,1 @@
+MODOBJFILES= Ampa.o BK_Slow.o CaP.o CaT.o Kv1.o Nmda.o RegulationStim.o SK2.o TimerescaleStim.o capmax.o cdp_AIS.o cdp_smooth.o cdp_soma.o cdp_spiny.o distr.o ih.o kv3.o kv4f.o kv4s.o mslo.o myAMPA.o myGABA.o myNMDA.o mySyn.o nap.o narsg.o netstim.o netstim1.o peak.o pkjlk.o syn2.o

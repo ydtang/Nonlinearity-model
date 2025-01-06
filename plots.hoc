@@ -1,0 +1,100 @@
+/*
+* Novel dendritic action potentials shape the computational 
+* 	properties of human layer 2/3 cortical neurons( Gidon et al., 2019)
+* 
+* written by 
+* Athanasia Papoutsi and Albert Gidon
+*/
+
+objref g,s
+strdef v_str,label
+objref shbox
+objref s2
+objref s1
+
+proc init_plots(){
+	objref g
+	steps_per_ms = 50	
+	dt = 1.0/steps_per_ms
+	// newPlotV()
+	// graphItem.erase_all()
+	// g = graphItem
+	// sprint(v_str,"%s.v(%f)",secname(),$1)
+	// sprint(label,"dap_loc:%s.v(%f)",secname(),$1)
+	// g.addvar("dend", "dend[100].v(0.5)", 2,1)
+	// g.addvar("somaA_loc", "soma.v(0.5)", 3,1)	
+}
+
+proc plot_shape(){
+	objref s
+	//forall nseg = int(L) //this is at the end, so it does not effect the simulation
+	s = new Shape()
+	//iondenstity.mark(s,2,"O",1)
+	plex_X.mark(s,2,"O",5)
+	plex_Y.mark(s,3,"O",5)
+	//plex_bg.mark(s,3,"O",4)
+	
+	//plin_subdomain.mark(s,1,"S",4)
+	//plin_basket.mark(s,2,"S",4)
+	//plin_martinotti.mark(s,3,"S",4)
+	
+	//pl_dcaap.mark(s,6,"T",7)
+	//plot_morphlogy()
+	forall {
+	ifsec bs {s.color(1)}
+	ifsec maindend {s.color(9)}
+	ifsec spinydend {s.color(9)}
+		
+	}
+}
+
+proc plot_morphlogy(){
+	objref s
+	s = new Shape()
+	forall {
+	ifsec bs {s.color(1)}
+	ifsec maindend {s.color(3)}
+	ifsec spinydend {s.color(4)}
+		
+	}
+	//s.printfile("OUTPUT/Morphology.dat")
+		
+}
+
+
+proc plot_panel(){
+	objref shbox
+	objref s2
+	objref s1
+       //shbox = new VBox()
+       //shbox.intercept(1)
+       access soma
+       //objref sl
+	   s2 = new SectionList()
+       s2.wholetree()
+       //objref s
+       s1 = new PlotShape(s2)
+       s1.colormap(12,1)
+       s1.colormap(0,0,0,255)
+       s1.colormap(1,0,85,255)
+       s1.colormap(2,0,170,255)
+       s1.colormap(3,0,255,255)
+       s1.colormap(4,0,255,128)
+       s1.colormap(5,0,255,0)
+       s1.colormap(6,110,255,0) 
+       s1.colormap(7,180,255,0)
+       s1.colormap(8,255,255,0) 
+       s1.colormap(9,255,170,0)
+       s1.colormap(10,255,100,0)
+       s1.colormap(11,255,0,0)
+       s1.variable("cai")
+	   s1.exec_menu("show ica_CaE")
+       s1.exec_menu("Shape Plot")
+       //s1.scale(-70,0)
+	   s1.scale(0,1)
+       s1.exec_menu("Show Diam")
+       fast_flush_list.append(s1)
+       //shbox.intercept(0)
+       //shbox.map("Shape",700,10,400,400)			
+	
+} 

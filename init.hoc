@@ -1,0 +1,34 @@
+/*
+* Novel dendritic action potentials shape the computational 
+* 	properties of human layer 2/3 cortical neurons( Gidon et al., 2019)
+* 
+* written by 
+* Athanasia Papoutsi and Albert Gidon
+*/
+
+load_file("xor.hoc")
+
+objref vbox
+objref null
+
+vbox = new VBox()
+vbox.intercept(1)
+
+xpanel("XOR")
+
+  //xbutton("uncoupled/Figure 3: test pulse","test_pulse_uncoupled()")
+  xbutton("/Figure 1A: Run","uncoupled(\"X\")")
+  // xbutton("uncoupled/Figure 3: pathway Y","uncoupled(\"Y\")")
+  // xbutton("uncoupled/Figure 3: pathway X + pathway Y","uncoupled(\"XY\")")
+  // xbutton("uncoupled/Figure 3: pathway X + pathway Y + inhibition","uncoupled(\"XY+inhib\")")
+
+  // xbutton("coupled/Figure S9: test pulse ","test_pulse_coupled()")
+  // xbutton("coupled/Figure S9: pathway X","coupled(\"X\")")
+  // xbutton("coupled/Figure S9: pathway X + pathway Y","coupled(\"XY\")")
+  // xbutton("coupled/Figure S9: pathway X + pathway Y + distal inhibition","coupled(\"XY+distal.inhib\")")
+  // xbutton("coupled/Figure S9: pathway X + proximal inhibition","coupled(\"X+proximal.inhib\")")
+  
+
+xpanel()
+vbox.intercept(0)	//ends intercept mode
+vbox.map()		//draw the box and its contents

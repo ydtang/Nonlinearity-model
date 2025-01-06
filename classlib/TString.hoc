@@ -1,0 +1,148 @@
+D__TSTRINGHOC = 1
+/**
+* Most basic string object
+*/
+begintemplate TString
+	strdef s,format,regexp
+	objref this,sf
+	public s,append,insrt,c,exec,equal,fopen,cl
+	public match,re
+	proc init(){local i,n
+		sf = new StringFunctions()
+		i = argtype(1)
+		n = numarg()
+		s = ""
+		format = "%s" //default for strdef or TString
+		if(i == 0) format = "%f" //default for numbers
+		if(n > 1) format = $s2 //user defined format
+		
+		if(i == 0) sprint(s,format,$1)
+		if(i == 1) sprint(s,format,$o1.s)
+		if(i == 2) sprint(s,format,$s1)
+	}
+	//The return value is 0 for numbers, 1 for objref, 
+	// 2 for strdef, and 3 for pointers for numbers
+	// append(strdef[,format])
+	// append(TString[,format])
+	// append(number[,format])
+	obfunc append(){local i,n
+		i = argtype(1)
+		n = numarg()
+		
+		format = "%s%s" //default for strdef or TString
+		if(i == 0) format = "%s%f" //default for numbers
+		if(n > 1) sprint(format,"%%s%s",$s2) //user defined format
+		
+		if(i == 0) sprint(s,format,s,$1)
+		if(i == 1) sprint(s,format,s,$o1.s)
+		if(i == 2) sprint(s,format,s,$s1)
+		return this
+	}
+	obfunc insrt(){local i
+		i = argtype(1)
+		if(i==0) {
+			sprint(format,"%s%%s",$s2)
+			sprint(s,format,$1,s)
+		}
+		if(i==1) sprint(s,"%s%s",$o1.s,s)
+		if(i==2) sprint(s,"%s%s",$s1,s)
+		return this
+	}
+	//get a new copy
+	obfunc c(){localobj r		
+		r = new TString(s)
+		return r
+	}
+	//clear or initialize
+	obfunc cl(){
+		s = ""
+		if(numarg() > 0) s = $s1
+		return this
+	}
+	
+	proc exec(){local ret
+		if(numarg()>0){
+			execute(s,$o1)
+		}else{
+			execute(s)
+		}
+	}
+	func equal(){local i
+		i = argtype(1)
+		if(i==2) return (strcmp(s,$s1)==0)
+		if(i==1) return (strcmp(s,$o1.s)==0)
+	}
+	
+	obfunc fopen(){localobj file
+		file = new File(s)
+		if(numarg()>0){
+			if($1==1) file.wopen()
+			if($1==2) file.aopen()
+			if($1==3) file.ropen()
+			
+		}else{
+			file.wopen()
+		}
+		return file
+		
+	}
+	
+	obfunc re(){local first_char,last_char localobj matchobj,tail,tmp,replaced
+		regexp = $s1
+		matchobj = new List()
+		tail = new TString(s)
+		tmp = new TString(s)
+		last_char = sf.len(s)
+		replaced = new TString("")
+		first_char = 0
+		while(first_char != last_char){ //-1 or 0 length string.
+			//print "first_char,last_char",first_char,last_char
+			sf.left(tmp.s,last_char)
+			sf.right(tmp.s,first_char)
+			matchobj.append(new TString(tmp))		
+			first_char = sf.head(tail.s,regexp,tmp.s)//just to get the first char
+			replaced.append(tmp)
+			tmp.s = tail.s
+			last_char = sf.tail(tail.s,regexp,tail.s) // now get the remainder of the string
+		}
+		replaced.append(tmp)
+		matchobj.append(replaced) //the last object is the original string without the regular expression
+		//what to return?
+		if (numarg() > 1){
+			if(matchobj.count > $2 && $2 >= 0 ) return matchobj.o($2)
+			if($2 < 0 && matchobj.count >= -$2) return matchobj.o(matchobj.count + $2)
+			return new TString("")
+		}else{
+			return matchobj
+		}
+	}
+	
+	func match(){
+		regexp = $s1		
+		return strcmp(re(regexp,1).s,"")!=0
+	}
+	
+	func remove(){
+	regexp = $s1
+	}
+endtemplate TString
+
+/*
+* example
+*/
+
+// objref f,l
+// f = new TString("aosdaoks dnoiaksd434 333UUUU _Sdasd_3333_iiiiii")
+// print f.s
+// l =  f.re("doni[a-zA-Z0-9_]+")
+// for i=0,l.count-1 print l.o(i).s 
+
+// print "the second string (which is also the first match) is:",f.re("dnoi[a-zA-Z0-9]+",1).s
+// print "found match (1=true,0=false): ", f.match("^[^ ]+")
+// print "the match is: ", f.re("^[^ ]+",1).s
+// remove all the numbers from the string
+// l = f.re("[0-9]")
+// print "replace by: ", l.o(l.count-1).s
+
+
+	

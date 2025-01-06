@@ -1,0 +1,9 @@
+iterator case() {local i
+        for i = 2, 10 {           //must begin at 2 because the first argument is
+                                        //in reference to the address
+                $&1 = $i                //what is at the address will be changed
+                iterator_statement    //This is where the iterator statement will
+                                        //be executed.
+        }
+}
+$&1 = $i

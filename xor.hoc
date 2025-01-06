@@ -1,0 +1,314 @@
+/*
+* Novel dendritic action potentials shape the computational 
+* 	properties of human layer 2/3 cortical neurons( Gidon et al., 2019)
+* 
+* written by 
+* Athanasia Papoutsi and Albert Gidon
+*/
+objref subdend
+objref subdend1
+objref topdend,topdend1
+load_file("nrngui.hoc")
+
+if(unix_mac_pc() == 3) nrn_load_dll("mod/nrnmech.dll")
+xopen("mouse4.hoc")
+load_file("biophys.hoc")
+load_file("syns.hoc")
+load_file("plots.hoc")
+objref IsynAMPA,StimTime,ApicAP,TimeS,somaAAP,somaAtime,Ih,APALL,impe,rheo
+objref IsynAMPA1,StimTime1,ApicAP1,TimeS1,somaAAP1,somaAtime1,Ih1,impe1
+objref veclist, tempvec,nettime1
+objref dia,dis
+
+veclist = new List()
+
+objref ss
+IsynAMPA=new File()
+APALL=new File()
+StimTime=new File()
+ApicAP=new File()
+TimeS=new File()
+somaAAP=new File()
+somaAtime=new File()
+Ih=new File()
+impe=new File()
+rheo=new File()
+dis=new File()
+dia=new File()
+dis.wopen("distance.dat")	
+dia.wopen("diameter.dat")	
+rheo.wopen("rheo.dat")	
+impe.wopen("impedance.dat")	
+APALL.wopen("APALL.dat")	
+IsynAMPA.wopen("IsynAMPA.dat")	
+StimTime.wopen("StimTime.dat")	
+ApicAP.wopen("ApicAP.dat")	
+TimeS.wopen("Time.dat")	
+somaAAP.wopen("somaAAP.dat")	
+somaAtime.wopen("Sspiketime.dat")	
+Ih.wopen("Ih.dat")	
+IsynAMPA1=new Vector()
+StimTime1=new Vector()
+ApicAP1=new Vector()
+TimeS1=new Vector()
+somaAAP1=new Vector()
+somaAtime1=new Vector()
+Ih1=new Vector()
+impe1=new Vector()
+Seed = 987651119
+
+
+ //objref topdend
+//globals
+objref apc
+soma apc = new APCount(0.5)
+	  apc.thresh =-10
+      apc.record(somaAtime1)
+proc conclude(){local x
+	plot_shape()
+	finitialize()
+	soma Rin=get_Rin(0.5) 
+	print "Rin = ", Rin 
+	soma distance()	
+    print "plex_X:",plex_X.printf()
+	print "dCaAP is located at ", distance(dcaap_loc)," um from the soma"
+	printf("somaAtic AP rate: %f Hz",apc.n / (tstop - delay))	
+}
+
+//set parameters for the dcaap. 
+proc add_dcaap(){local dcaap_loc,dcaap_w
+	// dcaap_loc = $1
+	// //insert dCaAP
+	// pl_dcaap = new TPointList()
+	// pl_dcaap.append(dcaap_loc) 
+	// vth_dCaAP(dcaap_loc) = -36
+	// D_dCaAP(dcaap_loc) = 0.3
+	// vrest_dCaAP(dcaap_loc) = -75
+	// refract_period_dCaAP(dcaap_loc) = 200
+	// sigma_diff_dCaAP(dcaap_loc) = 21
+	// tauA_dCaAP(dcaap_loc) = 3
+	// tauB_dCaAP(dcaap_loc) = 0.4
+	// w_dCaAP(dcaap_loc) = (dcaap_w = $2) //Adjusting the dCaAP weight manually.
+}
+
+
+proc set_pathways_combination(){local pathwayX,pathwayY,subdomain_inhibition,distal_inhibition,proximal_inhibition,background_excitation
+	initialize_pathways()//initialize
+	dur=30000
+	delay=0
+	syn_freq_Hz=2
+	//if(bg=1)add_syns(plex_bg,syns,tplay,syn_freq_Hz,delay,dur,ampa=1,nmda=0,basket=0,martinotti=0)
+	if(pathwayX=$1)add_syns(plex_X,syns,tplay,NetConList,NetConList1,syn_freq_Hz,delay,ampa=1,nmda=0,basket=0,martinotti=0)
+	if(pathwayY=$2)add_syns(plex_Y,syns,tplay,NetConList,NetConList1,syn_freq_Hz,delay,ampa=1,nmda=0,basket=0,martinotti=0)
+	//if(pathwayY=$2)add_syns(plex_Y,syns,tplay,syn_freq_Hz,delay,dur,ampa=1,nmda=1,basket=0,martinotti=0)
+	if(subdomain_inhibition=$3)add_syns(plin_subdomain,syns,tplay,syn_freq_Hz,delay,dur,ampa=0,nmda=0,basket=0,martinotti=1)
+	if(distal_inhibition=$4)add_syns(plin_martinotti,syns,tplay,syn_freq_Hz,delay,dur,ampa=0,nmda=0,basket=0,martinotti=1)
+	if(proximal_inhibition=$5)add_syns(plin_basket,syns,tplay,syn_freq_Hz,delay,dur,ampa=0,nmda=0,basket=1,martinotti=0)
+}
+
+//to init use a context of a section
+proc init_sim(){local dcaap_loc,dcaap_w
+	execute1("vbox.unmap()",0)//only one simulation at a time. rerun for other simulations.//execute statement
+	biophys()
+	init(v_init = -75) 
+	add_dcaap(dcaap_loc = $1,dcaap_w = $2)
+	//plot_panel()
+	
+}
+
+
+proc activate_pathways(){localobj pathway
+	pathway = new TString($s1)
+	if(pathway.equal("X")) set_pathways_combination(1,0,0,0,0,0)
+	if(pathway.equal("Y")) set_pathways_combination(0,1,0,0,0,1)	
+	if(pathway.equal("XY")) set_pathways_combination(1,1,0,0,0,3)
+	if(pathway.equal("XY+inhib")) set_pathways_combination(1,1,1,0,0,4)
+	if(pathway.equal("XY+distal.inhib")) set_pathways_combination(1,1,0,1,0,4)
+	if(pathway.equal("X+proximal.inhib")) set_pathways_combination(1,0,0,0,1,5)	
+}
+
+
+proc test_pulse_uncoupled(){local dcaap_loc,dcaap_w localobj ic
+	strdef str1
+	soma {
+	for (ihmax=1.2e-5;ihmax<=1.2e-5;ihmax+=5e-6){
+		init_sim(dcaap_loc = 0.214,dcaap_w = 0)	
+		soma ic = new IClamp(dcaap_loc)
+		ic.dur = 500
+		ic.del = 200
+		tstop = 1000
+		init_plots(dcaap_loc)
+		//graphItem.family(1)//if 1 then keep the line if 0 then erase the line
+		for (ic.amp=0.4;ic.amp <= 0.4;ic.amp += 0.05){ 	
+			print "current injection = ", ic.amp*1000 , " pA"
+			K=1
+			forall {
+				tempvec = new Vector()
+				tempvec.record(&v(0.5))
+				veclist.append(tempvec)
+				 // print "K:",K,secname()
+			     // K=K+1
+  		}
+	
+			sprint(str1, "ihmax=%g", ihmax)			
+			execute(str1)	
+            print "ihmax = ",ihmax			
+			//Ih1.record(&soma.i_hd(0.5))
+			ApicAP1.record(&soma.v(0.214))
+			TimeS1.record(&t)
+			somaAAP1.record(&soma.v(0.5))
+			run()
+			//continuerun(220)
+			//Ih1.printf(Ih)
+			ApicAP1.printf(ApicAP)
+			somaAAP1.printf(somaAAP)
+			TimeS1.printf(TimeS)
+			somaAtime1.printf(somaAtime)
+			somaAtime.printf(" %4.8f\n",-1)	
+							
+			forall {
+				Rin=get_Rin(0.5) 
+				impe.printf(" %4.8f\n",Rin)				
+				}	
+		if (apc.n==1) rheo.printf(" %4.8f\n",ic.amp)	
+		}
+		}
+		//TimeS1.printf(TimeS)
+		plot_shape()
+		plot_morphlogy()
+		soma Rin=get_Rin(0.5) 
+		print "Rin = ", Rin 
+		Ih.close()
+		ApicAP.close()		
+		somaAAP.close()
+		TimeS.close()
+		APALL.close()
+		impe.close()
+		rheo.close()
+		somaAtime.close()
+	}
+}
+
+proc test_pulse_coupled(){local dcaap_loc,dcaap_w localobj ic
+	soma {
+		init_sim(dcaap_loc = 0.99,dcaap_w = 4)	
+		ic = new IClamp(dcaap_loc)
+		ic.dur = 1000
+		ic.del = 200
+		tstop = 1400
+		init_plots(dcaap_loc)
+		graphItem.family(1)
+		for (ic.amp=-0.06;ic.amp <= -0.06;ic.amp += 0.02){ 	
+			print "current injection = ", ic.amp*1000 , " pA"
+			run()
+		}
+	}
+}
+
+proc uncoupled(){ local LocSyn 
+K=1
+        strdef str1
+	    topdend = new SectionList()
+		topdend1 = new SectionList()
+	    dend[81] topdend.append()
+		dend[81] nseg =20
+		dend[81] topdend1.append()
+		dend[81] nseg =20
+		print "K=",K
+		K=K+1
+	   tstop = 1000
+	   print secname()
+        for (SYN=1 ;SYN<= 9;SYN += 1){ 		
+		//sprint(str1, "syn_freq_Hz=%g", SYN)	
+        //execute(str1)	
+        if(SYN==1){init_points(syns_group1=1,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.1)}
+        if(SYN==2){init_points(syns_group1=1,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.3)}
+        if(SYN==3){init_points(syns_group1=1,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.5)}
+        if(SYN==4){init_points(syns_group1=1,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.7)}
+        if(SYN==5){init_points(syns_group1=1,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.9)}
+        if(SYN==6){init_points(syns_group1=2,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.1)}	
+        if(SYN==7){init_points(syns_group1=3,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.1)}
+        if(SYN==8){init_points(syns_group1=4,syns_group2=1,syns_inh_distal=20,syns_inh_proximal=35,0.1)}
+        if(SYN==9){init_points(syns_group1=5,syns_group2=5,syns_inh_distal=20,syns_inh_proximal=35,0.1)}			
+		
+		init_sim(dcaap_loc = 0.214,dcaap_w = 0)	
+		activate_pathways($s1,is_coupled = 0)
+		init_plots(dcaap_loc)
+	
+		TimeS1.record(&t)
+		somaAAP1.record(&soma.v(0.5))
+					 
+		run()
+	
+		somaAAP1.printf(somaAAP)
+		somaAtime1.printf(somaAtime)
+		//ApicAP.printf(" %4.8f\n",-1)	
+		somaAAP.printf(" %4.8f\n",-1)
+        somaAtime.printf(" %4.8f\n",-1)			
+		}
+		
+		//ApicAP.printf(" %4.8f\n",-2)	
+		somaAAP.printf(" %4.8f\n",-2)
+		nseg =1
+		TimeS1.printf(TimeS)
+		printf("somaAtic AP1 rate: %f Hz",apc.n / (tstop - delay))
+		conclude()
+		printf("somaAtic AP2 rate: %f Hz",somaAtime1.size())
+		IsynAMPA.close()
+		Ih.close()
+		StimTime.close()
+		TimeS.close()
+		ApicAP.close()		
+		somaAAP.close()
+		somaAtime.close()
+		APALL.close()
+		dia.close()
+		dis.close()
+		
+}
+ 
+ 
+proc coupled(){
+
+	soma{
+		tstop = 1000
+		init_points(syns_bg = 100,syns_group1 = 35,syns_group2 = 35,syns_inh_distal = 35,syns_inh_proximal = 35)
+		 init_sim(dcaap_loc = 0.99,dcaap_w = 0)
+		soma activate_pathways($s1,is_coupled = 1)
+		init_plots(dcaap_loc)	
+		IsynAMPA1.record(&syns.o(1).i)
+		//Ih1.record(&soma.i_hd(0.5))
+		LocSyn=syns.o(1).get_loc()
+		ApicAP1.record(&soma.v(0.99))
+		TimeS1.record(&t)
+		somaAAP1.record(&soma.v(0.5))
+		run()
+		
+		//print "NSyn = ",syns.count()
+		//print "ISYN = ",syns.o(2).get_loc()
+		//ISYN1=new(&syns.o(1).i)
+		//IsynAMPA.printf("%10.4f \n",-1.1)
+		 
+		//nettime1=syns.o(1).i
+		StimTime1=tplay.o(1)
+		print "APC = ",somaAtime1.size()
+		print "APC1 = ",apc.n()
+	    printf("somaAtic AP rate: %f Hz",apc.n / (tstop - delay))
+		
+		IsynAMPA1.printf(IsynAMPA)
+		//Ih1.printf(Ih)
+		StimTime1.printf(StimTime)
+		ApicAP1.printf(ApicAP)
+		TimeS1.printf(TimeS)
+		somaAAP1.printf(somaAAP)
+		somaAtime1.printf(somaAtime)
+		conclude()
+		IsynAMPA.close()
+		Ih.close()
+		StimTime.close()
+		ApicAP.close()
+		TimeS.close()
+		somaAAP.close()
+	}
+}
+

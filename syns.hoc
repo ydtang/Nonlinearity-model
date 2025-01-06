@@ -1,0 +1,208 @@
+/*
+* Novel dendritic action potentials shape the computational 
+* 	properties of human layer 2/3 cortical neurons( Gidon et al., 2019)
+* 
+* written by 
+* Athanasia Papoutsi and Albert Gidon
+*/
+
+load_file("classlib/TString.hoc")
+load_file("classlib/TPointList.hoc")
+
+objref plex_bg,plex_X,plex_Y
+objref plin_subdomain,plin_martinotti,plin_basket
+objref pl_dcaap
+objref syns,rnd, tplay,stimApp,NetConList,randNum,netConApp,NetConList1
+objref ramweight
+WeightSEED=12345642
+gmax=1e-3
+
+
+rnd = new Random(0) //so that the synapses do not have the same activity.
+obfunc get_tplay(){local Hz, delay, dur localobj tp
+	Hz = $1
+    delay = 100
+	delay = $2
+	dur = $3/1000
+    //assign four times the nuber of extepcted spike per second to be safe
+	tp = new Vector(Hz * dur * 5  )  //large vector to avoid edge conditions
+	rnd.negexp(1/Hz * 1000)
+	tp.setrand(rnd)
+	tp.integral().add(delay)
+	tp.where("<",delay + dur * 1000)
+	return tp
+}
+
+
+obfunc get_stim(){local Hz, delay, dur localobj tp
+	Hz = $1
+    delay = 100
+	delay = $2
+	dur = $3/1000
+    //assign four times the nuber of extepcted spike per second to be safe
+	tp = new Vector(Hz * dur * 5  )  //large vector to avoid edge conditions
+	rnd.negexp(1/Hz * 1000)
+	tp.setrand(rnd)
+	tp.integral().add(delay)
+	tp.where("<",delay + dur * 1000)
+	return tp
+}
+
+
+
+proc add_syns(){local rate, x,randseed,Hz,delay,dur,use_ampa,use_nmda,use_basket,use_martinotti localobj tp,s,points,syns,tplay,NetConList,randNum,NetConList1
+	points = $o1
+    syns = $o2 
+	tplay = $o3
+    NetConList= $o4
+	NetConList1= $o5
+	rate=$6
+	randNum = new Random(Seed)
+	//randseed = randNum.uniform(0, 50)
+	randseed = randNum.discunif(1,500)	
+	//synaptic parameters as in Eyal et al., (2018)
+	ramweight=new Random(WeightSEED)  //0
+	gmax0 = ramweight.normal(gmax,(gmax/10)^2) 
+
+	
+	
+	for points.each_point(&x) {
+		// randseed=randNum.repick()
+		// stimApp = new pfNetStim(.5)
+		// stimApp.interval=1000/randseed
+		// stimApp.number= 100000
+		// stimApp.noise=1
+		// print "rate=",randseed
+		// stimApp.seed(Seed+randseed)	
+		// stimApp.start = $7
+		
+		stimApp = new RegulationStim(.5)
+		stimApp.duration=1
+        stimApp.interval=10
+        stimApp.start=500		//(mean) time between spikes
+		randseed=randNum.repick()
+		
+        tplay.append(stimApp)	
+
+        
+		
+		//print "randseed=",randseed	
+        //stimApp.seed(Seed+randseed)	
+				
+		gmax0 = ramweight.repick()
+		while (gmax0<0){gmax0 = ramweight.repick()}	
+
+		if(use_ampa = $8){
+			//ampa synapses
+			//s = new Exp2Syn(x)
+			//s =  new Ampa(x)
+			//s.tau_rec=1
+			//s.tau_facil=-1
+			//s.U=0.4
+			//s.gmax=5
+			//s.gmax = 0.7e-3  //uS
+			//{s.tau0 = 0.3 s.tau1 = 1.8  s.e = 0}
+			//s.play( tp )
+			//s.myexp(10)
+		
+		   
+			//s =  new myAMPA(x)
+			s =  new cfAMPA(x)
+			s.taurise=0.5//ms rise time
+			s.taudecay=5//decay time
+			s.gampamax=0.8
+			s.e = 0
+			//s.gmax = 0.1  //uS
+			//{s.tau_r = 0.3 s.tau_d = 1.8 s.mg = 0 s.e = 0}
+			syns.append(s)
+			netConApp = new NetCon(stimApp, s, 0, 0, gmax0)  
+			
+			NetConList.append(netConApp)
+			
+		}
+		if(use_nmda = $9){
+
+			//nmda synapses
+			//s =  new myNMDA(x)
+			// s.gmax = 0.5   //uS
+			// {s.tau_r = 8 s.tau_d = 35 s.mg = 1 s.e = 0}
+			// s.gamma = 0.077//0.082 //rhodes et al., 2006
+			
+			s =  new PCNMDA(x)
+			s.taurise=8 //ms rise time
+			s.taudecay=30
+			s.gnmdamax=0.96
+			s.e = 0
+			//print "222"
+			syns.append(s)
+			netConApp = new NetCon(stimApp, s, 0, 0, gmax0) 
+			NetConList1.append(netConApp)
+		}
+		//mid value between fast GABAa with 5 ms decay as in Salin and Prince, 1996 for
+		// fast basket cells inhibition and slow martinotti GABAa with 20 ms decay (Gidon and Segev 2012)
+		// For this simulation actually any reasonable parameters would work here with a bit of
+		// adjustment to the overall excitability (number of synapses, threshold etc').	
+		if(use_basket = $10){
+			s =  new syn2(x)
+			//s.gmax =  0.5e-3//uS
+			{s.tau0 = 0.5 s.tau1 = 5 s.e = -75 s.myexp(10)}// s.play( tp )}
+			syns.append(s)
+		}		
+		if(use_martinotti = $11){
+			s =  new syn2(x)
+			//s.gmax =  0.5e-3//uS
+			s.tau0 = 2
+			s.tau1 = 23
+			s.e = -75
+			//s.play( tp )
+			s.myexp(10)
+			syns.append(s)
+		}
+		//tplay.append(tp)
+		//nettime1 =new NetCon(stimApp,0)	
+		 
+				
+	}
+}
+
+
+proc initialize_pathways(){
+	//this will redifine the list object 
+	//and delete the content of the list
+	syns = new List()
+	tplay = new List()
+	NetConList=new List()
+	NetConList1=new List()
+}
+
+proc init_points() {local syns_bg,syns_X,syns_Y,syns_martinotti,syns_basket,poi localobj rnd_p
+	//syns_bg = $1//
+
+	syns_X = $1
+
+	syns_Y = $2
+	syns_martinotti = $3
+	syns_basket = $4	
+	poi=$5
+	plex_bg = new TPointList()
+	plex_X = new TPointList()
+	plex_Y = new TPointList()
+    //
+	//plex_bg.setrand(alldend,syns_bg,rnd_p = new Random(3),0.5)
+	plex_X.setrand(topdend,syns_X,rnd_p = new Random(2),poi)
+	plex_Y.setrand(topdend1,syns_Y,rnd_p = new Random(4),poi)
+
+	plin_basket = new TPointList()
+	plin_subdomain = new TPointList()
+	plin_martinotti = new TPointList()
+	//plin_subdomain.setrand(maindend,syns_martinotti,rnd_p = new Random(5))
+  
+	//plin_basket.setrand(maindend,syns_basket,rnd_p = new Random(10))
+	
+	//soma plin_martinotti.setrand_distance(bs,700,syns_martinotti,rnd_p = new Random(5))
+
+	//start from scratch
+	initialize_pathways()
+	
+}
+
